@@ -1,127 +1,293 @@
-import React, { createContext, useContext, useReducer, useEffect, Dispatch } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode } from "react";
+// Certifique-se que estes tipos refletem a estrutura do backend
+import { Product, ProductVariant } from "../types/product";
 
-export interface ProductVariant {
-  id: number;
-  size?: string;
-  color?: string;
-  sku: string;
-  price: string;
-  stock: number;
-}
-
-export interface Product {
-  id: number;
-  name: string;
-  description?: string;
-  price: string;
-  sku: string;
-  stock: number;
-  image?: string;
-  variants?: ProductVariant[];
-}
-
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
+// --- INTERFACE (sem mudanças) ---
+interface CartItem {
   productId: number;
-  variantId?: number | null;
-  product?: Product;
-  variantSnapshot?: any | null;
+  variantId: number;
+  quantity: number;
+  product: Product;
 }
 
 interface CartState {
   items: CartItem[];
 }
 
+// --- ACTIONS (Tipo do payload LOAD_CART ajustado) ---
 type CartAction =
-  | { type: 'ADD_ITEM'; payload: CartItem }
-  | { type: 'REMOVE_ITEM'; payload: { productId: number; variantId?: number | null } }
-  | { type: 'SET_QUANTITY'; payload: { productId: number; variantId?: number | null; quantity: number } }
-  | { type: 'CLEAR_CART' }
-  | { type: 'SET_CART'; payload: CartItem[] };
+  | {
+      type: "ADD_ITEM";
+      payload: {
+        productId: number;
+        variantId: number;
+        quantity: number;
+        product: Product;
+      };
+    }
+  | { type: "REMOVE_ITEM"; payload: { productId: number; variantId: number } }
+  | {
+      type: "UPDATE_QUANTITY";
+      payload: { productId: number; variantId: number; quantity: number };
+    }
+  | { type: "CLEAR_CART" }
+  | { type: "LOAD_CART"; payload: any[] }; // Tipado como any[] para limpeza no reducer
 
-interface CartContextType {
-  state: CartState;
-  dispatch: Dispatch<CartAction>;
-  getTotal: () => number;
-}
+// --- CONTEXTO (sem mudanças) ---
+const CartContext = createContext<
+  | {
+      state: CartState;
+      dispatch: React.Dispatch<CartAction>;
+      getTotal: () => number;
+    }
+  | undefined
+>(undefined);
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+// --- STORAGE (sem mudanças) ---
+const CART_STORAGE_KEY = "shopping_cart_v2";
 
-const initialState: CartState = {
-  items: [],
+// Retorna any[] para limpeza no reducer
+const loadCartFromStorage = (): any[] => {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Error loading cart from storage:", error);
+  }
+  return [];
 };
 
-function cartReducer(state: CartState, action: CartAction): CartState {
+const saveCartToStorage = (items: CartItem[]) => {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error("Error saving cart to storage:", error);
+  }
+};
+
+// --- REDUCER CORRIGIDO ---
+const cartReducer = (state: CartState, action: CartAction): CartState => {
+  let newState: CartState;
+
   switch (action.type) {
-    case 'ADD_ITEM': {
-      const existingIndex = state.items.findIndex(
-        i => i.productId === action.payload.productId && i.variantId === action.payload.variantId
-      );
-      if (existingIndex >= 0) {
-        const items = [...state.items];
-        items[existingIndex] = {
-          ...items[existingIndex]!,
-          quantity: items[existingIndex]!.quantity + action.payload.quantity,
-        };
-        return { ...state, items };
+    case "ADD_ITEM": {
+      const { productId, variantId, quantity, product } = action.payload;
+
+      // Validação inicial: produto existe e tem variantes?
+      if (!product || !Array.isArray(product.variants)) {
+        console.error(`Produto inválido ou sem variantes: ID ${productId}`);
+        return state;
       }
-      return { ...state, items: [...state.items, action.payload] };
+
+      // Encontra a variante específica ANTES de mais nada
+      const variant = product.variants.find(
+        (v: ProductVariant) => v.id === variantId
+      ); // Type 'v' explicitly
+
+      // Sai imediatamente se a variante não for encontrada
+      if (!variant) {
+        console.error(
+          `Variante ${variantId} não encontrada no produto ${productId}`
+        );
+        return state;
+      }
+      // Agora TS sabe que 'variant' existe e tem 'stock', 'sku', etc.
+      const availableStock = variant.stock;
+
+      const existingItemIndex = state.items.findIndex(
+        (item) => item.productId === productId && item.variantId === variantId
+      );
+
+      if (existingItemIndex > -1) {
+        // Item existente
+        const currentItem = state.items[existingItemIndex]; // Garante que currentItem não é undefined
+        const currentQuantity = currentItem.quantity;
+        const potentialNewQuantity = currentQuantity + quantity;
+        const finalQuantity = Math.min(potentialNewQuantity, availableStock);
+
+        if (potentialNewQuantity > availableStock) {
+          console.warn(
+            `Estoque limitado para ${variant.sku}. Adicionado até o limite de ${availableStock}.`
+          );
+          // Notificação UI
+        }
+        if (finalQuantity === currentQuantity) return state; // Sem mudanças
+
+        const newItems = [...state.items];
+        // CORREÇÃO: Cria um novo objeto completo para garantir a tipagem correta
+        newItems[existingItemIndex] = {
+          ...currentItem, // Espalha o item existente (que é CartItem)
+          quantity: finalQuantity, // Sobrescreve apenas a quantidade
+        };
+        newState = { ...state, items: newItems };
+      } else {
+        // Novo item
+        const initialQuantity = Math.min(quantity, availableStock);
+
+        if (initialQuantity <= 0) {
+          console.warn(
+            `Estoque zerado ou insuficiente para ${variant.sku}. Item não adicionado.`
+          );
+          return state;
+        }
+        if (quantity > availableStock) {
+          console.warn(
+            `Estoque limitado para ${variant.sku}. Adicionando apenas ${availableStock}.`
+          );
+          // Notificação UI
+        }
+
+        // Cria o novo item garantindo todos os campos
+        const newItem: CartItem = {
+          productId,
+          variantId,
+          quantity: initialQuantity,
+          product,
+        };
+        newState = { ...state, items: [...state.items, newItem] };
+      }
+      saveCartToStorage(newState.items);
+      return newState;
     }
-    case 'REMOVE_ITEM':
-      return {
+
+    case "REMOVE_ITEM": {
+      // (Lógica sem erros reportados)
+      const { productId, variantId } = action.payload;
+      newState = {
         ...state,
         items: state.items.filter(
-          i => !(i.productId === action.payload.productId && i.variantId === action.payload.variantId)
+          (item) =>
+            !(item.productId === productId && item.variantId === variantId)
         ),
       };
-    case 'SET_QUANTITY': {
-      const items = state.items.map(i => {
-        if (i.productId === action.payload.productId && i.variantId === action.payload.variantId) {
-          return { ...i, quantity: action.payload.quantity };
-        }
-        return i;
-      });
-      return { ...state, items };
+      saveCartToStorage(newState.items);
+      return newState;
     }
-    case 'CLEAR_CART':
+
+    case "UPDATE_QUANTITY": {
+      const { productId, variantId, quantity } = action.payload;
+
+      const itemIndex = state.items.findIndex(
+        (item) => item.productId === productId && item.variantId === variantId
+      );
+      if (itemIndex === -1) return state;
+
+      const currentItem = state.items[itemIndex]; // Garante que existe
+      // CORREÇÃO: Acessa product de currentItem que sabemos existir
+      const product = currentItem.product;
+
+      // Validação: product e variants existem?
+      if (!product || !Array.isArray(product.variants)) {
+        console.error(
+          `Produto inválido no item ${productId}/${variantId} durante update.`
+        );
+        return state; // Ou remove o item?
+      }
+
+      const variant = product.variants.find(
+        (v: ProductVariant) => v.id === variantId
+      ); // Type 'v' explicitly
+
+      // CORREÇÃO: Checa se variant existe *antes* de usar .stock
+      if (!variant) {
+        console.error(
+          `Variante ${variantId} não encontrada no produto ${productId} durante update.`
+        );
+        return state; // Ou remove o item?
+      }
+      const availableStock = variant.stock;
+
+      if (quantity <= 0) {
+        newState = {
+          ...state,
+          items: state.items.filter((_, index) => index !== itemIndex),
+        };
+      } else {
+        const finalQuantity = Math.min(quantity, availableStock);
+
+        if (quantity > availableStock) {
+          console.warn(
+            `Estoque limitado para ${variant.sku}. Quantidade ajustada para ${availableStock}.`
+          );
+          // Notificação UI
+        }
+        if (finalQuantity === currentItem.quantity) return state; // Sem mudanças
+
+        const newItems = [...state.items];
+        // CORREÇÃO: Cria um novo objeto completo para garantir a tipagem correta
+        newItems[itemIndex] = {
+          ...currentItem, // Espalha o item existente (que é CartItem)
+          quantity: finalQuantity, // Sobrescreve apenas a quantidade
+        };
+        newState = { ...state, items: newItems };
+      }
+
+      saveCartToStorage(newState.items);
+      return newState;
+    }
+
+    case "CLEAR_CART":
+      // (Lógica sem erros reportados)
+      saveCartToStorage([]);
       return { ...state, items: [] };
-    case 'SET_CART':
-      return { ...state, items: action.payload };
+
+    case "LOAD_CART":
+      // Mapeia de any[] para CartItem[], removendo 'price' se existir
+      const loadedItems: CartItem[] = action.payload
+        .map((item: any) => {
+          const { price, ...rest } = item; // Tenta remover 'price'
+          // Validação básica: item carregado tem os campos mínimos?
+          if (
+            rest &&
+            typeof rest.productId === "number" &&
+            typeof rest.variantId === "number" &&
+            typeof rest.quantity === "number" &&
+            rest.product
+          ) {
+            // Remove campos extras ou inválidos se necessário
+            const cleanItem: CartItem = {
+              productId: rest.productId,
+              variantId: rest.variantId,
+              quantity: rest.quantity,
+              product: rest.product, // Assume que 'product' está no formato correto
+            };
+            return cleanItem;
+          }
+          console.warn("Item inválido encontrado no localStorage:", item);
+          return null; // Descarta item inválido
+        })
+        .filter((item): item is CartItem => item !== null); // Remove nulos e garante a tipagem
+
+      return { ...state, items: loadedItems };
+
     default:
+      // Ignora o aviso de variável não utilizada (para exhaustiveness check)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _: never = action;
       return state;
   }
-}
+};
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(cartReducer, initialState, () => {
-    try {
-      const raw = localStorage.getItem('cart');
-      return raw ? { items: JSON.parse(raw) as CartItem[] } : initialState;
-    } catch {
-      return initialState;
-    }
+// --- PROVIDER (sem mudanças significativas) ---
+export const CartProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [state, dispatch] = useReducer(cartReducer, {
+    items: loadCartFromStorage(),
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('cart', JSON.stringify(state.items));
-    } catch {
-      /* ignore storage errors */
-    }
-  }, [state.items]);
-
-  const getTotal = () => {
+  const getTotal = (): number => {
     return state.items.reduce((total, item) => {
-      const product = item.product;
-      if (!product) return total;
-
-      const variant = product.variants?.find(v => v.id === item.variantId);
-      const unitPrice = variant ? Number(variant.price) : Number(product.price);
-
-      return total + unitPrice * item.quantity;
+      // CORREÇÃO: Garante que product e variants existem antes do find
+      const variant = item.product?.variants?.find(
+        (v: ProductVariant) => v.id === item.variantId
+      ); // Type 'v' explicitly
+      const itemPrice = variant ? Number(variant.price) : 0;
+      const quantity =
+        Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 0;
+      return total + itemPrice * quantity;
     }, 0);
   };
 
@@ -132,8 +298,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useCart = (): CartContextType => {
-  const ctx = useContext(CartContext);
-  if (!ctx) throw new Error('useCart must be used within CartProvider');
-  return ctx;
+// --- HOOK (sem mudanças) ---
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCart must be used within a CartProvider");
+  }
+  return { ...context, getTotal: context.getTotal };
 };
