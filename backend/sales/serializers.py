@@ -155,7 +155,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ProductLiteSerializer(serializers.ModelSerializer):
     """
-    Serializer "leve" para listas (Sem alterações necessárias)
+    Serializer para o modelo Product, incluindo a criação aninhada da ProductVariant.
     """
     image = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()

@@ -12,13 +12,17 @@ interface ProductFormData {
   name: string;
   description: string;
   sku: string;
+  is_active?: boolean;
   price?: number;
   stock?: number;
   category: string;
   image?: string | null;
   variants?: Array<{
-    name: string;
     sku: string;
+    attributes: Array<{
+      attribute: string; // ex: "Cor"
+      value: string; // ex: "Azul"
+    }>;
     price: number;
     stock: number;
   }>;
