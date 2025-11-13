@@ -1,69 +1,8 @@
-# Sales Management System
+# README (Português)
 
-A full-stack sales management application built with Django REST Framework and React TypeScript, featuring JWT authentication, product/order management, and a modern component-based UI architecture.
+Este repositório contém a documentação principal em português em `README.pt.md`.
 
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Running the Application](#running-the-application)
-- [Project Structure](#project-structure)
-- [API Documentation](#api-documentation)
-- [Database Management](#database-management)
-- [Development](#development)
-- [License](#license)
-
-## ✨ Features
-
-- **User Authentication**
-  - JWT-based authentication with token refresh
-  - User registration and login
-  - Password change functionality
-  - Automatic token rotation with blacklisting
-
-- **Product Management**
-  - Create, read, update, and delete products
-  - SKU tracking and inventory management
-  - Product status control (active/inactive)
-
-- **Order Management**
-  - Complete order lifecycle management
-  - Order status tracking (pending, processing, shipped, delivered, cancelled)
-  - Customer information management
-  - Order items with quantity and pricing
-
-- **Modern UI**
-  - Responsive design with Tailwind CSS
-  - Component-based architecture
-  - Protected routes with automatic redirection
-  - Real-time authentication state management
-
-## 🛠️ Technology Stack
-
-### Backend
-- **Django 5.2.6** - Web framework
-- **Django REST Framework 3.16.1** - RESTful API
-- **PostgreSQL** - Database
-- **djangorestframework-simplejwt** - JWT authentication
-- **python-decouple** - Environment variable management
-- **Docker & Docker Compose** - Containerization
-
-### Frontend
-- **React 19.1.1** - UI library
-- **TypeScript** - Type safety
-- **Vite 7.1.7** - Build tool
-- **React Router DOM** - Navigation
-- **Axios** - HTTP client with interceptors
-- **Tailwind CSS** - Styling
-
-## 📦 Prerequisites
-
-- Python 3.8+
-- Node.js 16+
-- Docker & Docker Compose
-- Git
+Se preferir a versão em inglês, consulte `README.en.md`.
 
 ## 🚀 Installation
 
@@ -117,7 +56,9 @@ docker-compose ps
 ```
 
 **Database Credentials:**
+
 - **PostgreSQL**: `localhost:5432`
+
   - Database: `sales_db`
   - Username: `postgres`
   - Password: `postgres123`
@@ -152,6 +93,7 @@ python3 manage.py runserver
 ```
 
 Backend will be available at: `http://localhost:8000`
+
 - API Base URL: `http://localhost:8000/api`
 - Admin Panel: `http://localhost:8000/admin`
 
@@ -352,3 +294,97 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Built with ❤️ using Django and React**
+
+---
+
+## Quick start (short)
+
+1. Backend
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+2. Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Read the full architecture and developer guide in `ARCHITECTURE.md`.
+
+## 🖼️ Gerar diagramas automaticamente (GitHub Actions)
+
+Se você não tem Docker localmente ou prefere que o GitHub gere as imagens, há uma Action configurada para renderizar os arquivos PlantUML (`.puml`) e publicar os PNGs como artefato.
+
+Fluxo resumido:
+
+1. Crie uma branch para o PR (ex.: `add/diagrams-pngs`).
+2. Abra um PR; a workflow `Render PlantUML diagrams` rodará automaticamente e fará o upload de um artefato chamado `diagrams` contendo os PNGs gerados.
+3. Baixe o artefato pela interface do GitHub (Actions → execução da workflow → Artifacts) ou usando a CLI `gh` (ex.: `gh run download --name diagrams -D docs/diagrams/generated`).
+4. Extraia/copiar os arquivos PNG para `docs/diagrams/generated/` no repositório local, adicione-os ao Git e faça um commit/push.
+
+Detalhes e comandos passo-a-passo estão em `docs/DIAGRAMS_ACTION_INSTRUCTIONS.md`.
+
+## 🆕 Novas modificações (12/11/2025)
+
+Abaixo um resumo das alterações recentes encontradas no repositório. O resumo foi gerado a partir do estado atual dos arquivos (migrations, testes e código) — se quiser que eu inclua referências a commits/PRs específicas, diga quais ou forneça um intervalo de commits.
+
+- Backend
+
+  - Suporte a variantes de produto (SKU, cor, tamanho) e imagens: alterações de modelos e migrações presentes em `backend/sales/migrations/0002` até `0006`.
+  - Teste automatizado relacionado à migração de produtos para variantes: `backend/sales/tests/test_migrate_products_to_variants.py`.
+  - Scripts utilitários: `backend/create_admin.py` (auxilia na criação de usuários/admins em ambientes locais).
+
+- Frontend
+
+  - Internacionalização adicionada (`frontend/src/i18n.ts`, `frontend/src/locales/en.json`, `frontend/src/locales/pt-BR.json`).
+  - Novas páginas e testes de frontend (Vitest + `frontend/src/__tests__`).
+  - Configurações e ajustes do build: `frontend/vite.config.ts`, `tsconfig.json`, `package.json` (dependências e scripts).
+
+- Documentação & automações
+  - Workflow/automação para renderizar diagramas PlantUML e publicar artefatos (ver seção "Gerar diagramas automaticamente").
+  - Scripts para geração local/CI de diagramas: `scripts/render-diagrams.sh` e `scripts/render-diagrams.ps1`.
+
+Como validar as alterações rapidamente
+
+1. Backend (migrations + testes):
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py test backend.sales.tests.test_migrate_products_to_variants
+```
+
+2. Frontend (dev + testes):
+
+```powershell
+cd frontend
+npm install
+npm run dev            # rodar app localmente
+npm run test           # rodar testes (Vitest)
+```
+
+3. Gerar diagramas (local/CI):
+
+```powershell
+# Usando o script PowerShell
+./scripts/render-diagrams.ps1
+# Ou no Linux/macOS
+./scripts/render-diagrams.sh
+```
+
+Notas
+
+- Este resumo é baseado no estado atual do repositório (arquivos e migrações presentes). Se preferir que eu gere uma seção com changelog por commit ou PR, eu posso: me diga o intervalo de commits ou permita que eu acesse o histórico Git.
+- Se quiser que eu adicione links diretos para os arquivos mencionados ou exemplos de uso mais detalhados, eu adiciono na próxima atualização.
