@@ -87,3 +87,4 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         order.calculate_total()
         return order
+
