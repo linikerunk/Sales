@@ -81,12 +81,12 @@ export const ProductForm: FC<ProductFormProps> = ({
     return false; // Prevent auto upload
   };
 
-  const handleFinish = async (values: ProductFormData) => {
-      await onSubmit(values, imageFile);
-      form.resetFields();
-      setFileList([]);
-      setImageFile(undefined);
-    }
+  // const handleFinish = async (values: ProductFormData) => {
+  //     await onSubmit(values, imageFile);
+  //     form.resetFields();
+  //     setFileList([]);
+  //     setImageFile(undefined);
+  //   }
 
   return (
     <Form
