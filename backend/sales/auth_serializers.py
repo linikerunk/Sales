@@ -93,3 +93,4 @@ class ChangePasswordSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['new_password2']:
             raise serializers.ValidationError({"new_password": "campos de senha não correspondem."})
         return attrs
+    
