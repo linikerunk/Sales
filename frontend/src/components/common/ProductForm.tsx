@@ -89,7 +89,6 @@ export const ProductForm: FC<ProductFormProps> = ({
       setFileList([]);
       setImageFile(undefined);
     }
-  };
 
   return (
     <Form
