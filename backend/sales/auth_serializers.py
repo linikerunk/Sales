@@ -23,7 +23,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True,
         style={'input_type': 'password'},
-        label='Confirm Password'
+        label='Confirm Password '
     )
 
     class Meta:
