@@ -82,15 +82,11 @@ export const ProductForm: FC<ProductFormProps> = ({
   };
 
   const handleFinish = async (values: ProductFormData) => {
-    try {
       await onSubmit(values, imageFile);
       form.resetFields();
       setFileList([]);
       setImageFile(undefined);
-    } catch (error) {
-      console.error('Erro ao submeter formulário:', error);
     }
-  };
 
   return (
     <Form
